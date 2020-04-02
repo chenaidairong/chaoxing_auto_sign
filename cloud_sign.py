@@ -46,6 +46,7 @@ class AutoSign(object):
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.100 Safari/537.36'}
 		self.session = requests.session()
 		self.session.headers = self.headers
+		self.username = username
 		# 读取指定用户的cookies
 		if self.check_cookies_status(username) is False:
 			self.login(password, schoolid, username)
@@ -109,6 +110,7 @@ class AutoSign(object):
 
 	def check_activeid(self, activeid):
 		"""检测activeid是否存在，不存在则添加"""
+		activeid += self.username
 		if "activeid.json" not in os.listdir(activeid_path):
 			with open(activeid_file_path, 'w+') as f:
 				f.write("{}")
@@ -117,8 +119,8 @@ class AutoSign(object):
 			try:
 				# 读取文件
 				data = json.load(f)
-				activeid = data[activeid]
-				return True
+				if data[activeid]:
+					return True
 			except:
 				# 如果出错，则表示没有此activeid，添加此activeid
 				with open(activeid_file_path, 'w') as f2:
@@ -129,9 +131,7 @@ class AutoSign(object):
 	def get_all_classid(self) -> list:
 		"""获取课程主页中所有课程的classid和courseid"""
 		res = []
-		# re_rule = r'<li style="position:relative">[\s]*<input type="hidden" name="courseId" value="(.*)" />[\s].*<input type="hidden" name="classId" value="(.*)" />[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[s].*[\s]*[\s].*[\s].*[\s].*[\s].*[\s].*<a  href=\'.*\' target="_blank" title=".*">(.*)</a>'
 		r = self.session.get('http://mooc1-2.chaoxing.com/visit/interaction', headers=self.headers)
-		# res = re.findall(re_rule, r.text)
 		soup = BeautifulSoup(r.text, "lxml")
 		courseId_list = soup.find_all('input', attrs={'name': 'courseId'})
 		classId_list = soup.find_all('input', attrs={'name': 'classId'})
