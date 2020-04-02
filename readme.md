@@ -15,6 +15,8 @@ http://passport2.chaoxing.com/login
 
 
 ## 更新日志
+4.2
+- 修复多用户多签到任务bug
 
 3.21
 - 加入activeid缓存，会将所有签到成功的activeid记录在activeid.txt,避免重复触发签到
