@@ -1,22 +1,19 @@
 # -*- coding: utf8 -*-
 import os
 import time
-# import urllib3
 import asyncio
 import re
 import json
 import requests
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
-# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 
 # =================配置区start===================
 
 # 学习通账号密码
 user_info = {
-	'username': '13550903732',
-	'password': 'kingdom456',
+	'username': 'xxxx',
+	'password': 'xxxx',
 	'schoolid': ''  # 学号登录才需要填写
 }
 
@@ -28,10 +25,12 @@ server_chan = {
 }
 
 # 学习通账号cookies缓存文件路径
-cookies_path = "cookies.json"  # cookies.json 保存路径
+cookies_path = "./"
+cookies_file_path = cookies_path + "cookies.json"
 
 # activeid保存文件路径
-activeid_path = "activeid.txt"
+activeid_path = "./"
+activeid_file_path = activeid_path + "activeid.json"
 
 # =================配置区end===================
 
@@ -55,20 +54,19 @@ class AutoSign(object):
 	def save_cookies(self, username):
 		"""保存cookies"""
 		new_cookies = self.session.cookies.get_dict()
-		with open(cookies_path, "r") as f:
+		with open(cookies_file_path, "r") as f:
 			data = json.load(f)
 			data[username] = new_cookies
-			with open(cookies_path, 'w') as f2:
+			with open(cookies_file_path, 'w') as f2:
 				json.dump(data, f2)
 
 	def check_cookies_status(self, username):
 		"""检测json文件内是否存有cookies,有则检测，无则登录"""
-		if "cookies.json" not in os.listdir("./"):
-			with open(cookies_path, 'w+') as f:
+		if "cookies.json" not in os.listdir(cookies_path):
+			with open(cookies_file_path, 'w+') as f:
 				f.write("{}")
 
-		with open(cookies_path, 'r') as f:
-
+		with open(cookies_file_path, 'r') as f:
 			# json文件有无账号cookies, 没有，则直接返回假
 			try:
 				data = json.load(f)
@@ -111,13 +109,22 @@ class AutoSign(object):
 
 	def check_activeid(self, activeid):
 		"""检测activeid是否存在，不存在则添加"""
-		with open(activeid_path, 'r') as f:
-			s = f.read()
-			if activeid in s:
+		if "activeid.json" not in os.listdir(activeid_path):
+			with open(activeid_file_path, 'w+') as f:
+				f.write("{}")
+
+		with open(activeid_file_path, 'r') as f:
+			try:
+				# 读取文件
+				data = json.load(f)
+				activeid = data[activeid]
 				return True
-		with open(activeid_path, 'w+') as f:
-			f.writelines(activeid)
-			return False
+			except:
+				# 如果出错，则表示没有此activeid，添加此activeid
+				with open(activeid_file_path, 'w') as f2:
+					data[activeid] = True
+					json.dump(data, f2)
+				return False
 
 	def get_all_classid(self) -> list:
 		"""获取课程主页中所有课程的classid和courseid"""
@@ -141,27 +148,21 @@ class AutoSign(object):
 			'https://mobilelearn.chaoxing.com/widget/pcpick/stu/index?courseId={}&jclassId={}'.format(
 				courseid, classid), headers=self.headers, verify=False)
 		res = re.findall(re_rule, r.text)
-
-		# res = []
-
-		# soup = BeautifulSoup(r.text, "lxml")
-		# for s in soup.find_all("div", id="startList"):
-		# 	print(s.text)
-		# 	# s.findall()
-		# 	s = s.find_next("div").find_next("div")
-		#
-		# 	# print(s)
-		# 	activeid = re.findall('onclick="activeDetail\((.*),2,null\)"', )
-		# 	res.append(activeid)
-		print(res)
-		if res != []:  # 满足签到条件
-			return {
-				'classid': classid,
-				'courseid': courseid,
-				'activeid': res[0][0],
-				'classname': classname,
-				'sign_type': res[0][1]
-			}
+		n = len(res)
+		if n == 0:
+			return None
+		else:
+			d = {'num': n, 'class': {}}
+			for i in range(n):
+				# 预防同一门课程多个签到任务的情况
+				d['class'][i] = {
+					'classid': classid,
+					'courseid': courseid,
+					'activeid': res[i][0],
+					'classname': classname,
+					'sign_type': res[i][1]
+				}
+			return d
 
 	def general_sign(self, classid, courseid, activeid):
 		"""普通签到"""
@@ -261,6 +262,7 @@ class AutoSign(object):
 		"""签到类型的逻辑判断"""
 		if self.check_activeid(activeid):
 			return
+
 		if "手势" in sign_type:
 			# test:('拍照签到', 'success')
 			return self.hand_sign(classid, courseid, activeid)
@@ -279,8 +281,8 @@ class AutoSign(object):
 	def sign_tasks_run(self):
 		"""开始所有签到任务"""
 		tasks = []
-		sign_msg = {}
 		final_msg = []
+
 		# 获取所有课程的classid和course_id
 		classid_courseId = self.get_all_classid()
 
@@ -292,19 +294,18 @@ class AutoSign(object):
 		loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(loop)
 		result = loop.run_until_complete(asyncio.gather(*tasks))
-
-		for d in result:
-			if d is not None:
-				s = self.sign_in(d['classid'], d['courseid'], d['activeid'], d['sign_type'])
-				if not s:
-					return
-				# 签到课程， 签到时间， 签到状态
-				sign_msg = {
-					'name': d['classname'],
-					'date': s['date'],
-					'status': s['status']
-				}
-				final_msg.append(sign_msg)
+		for r in result:
+			if r:
+				for d in r['class'].values():
+					s = self.sign_in(d['classid'], d['courseid'], d['activeid'], d['sign_type'])
+					if s:
+						# 签到课程， 签到时间， 签到状态
+						sign_msg = {
+							'name': d['classname'],
+							'date': s['date'],
+							'status': s['status']
+						}
+						final_msg.append(sign_msg)
 		return final_msg
 
 
@@ -326,10 +327,6 @@ def server_chan_send(msg):
 
 def local_run():
 	# 本地运行使用
-	if "activeid.txt" not in os.listdir("./"):
-		with open(activeid_path, 'w+') as f:
-			f.write("{}")
-
 	s = AutoSign(user_info['username'], user_info['password'])
 	result = s.sign_tasks_run()
 	if result:
@@ -341,8 +338,8 @@ def local_run():
 
 
 if __name__ == '__main__':
-	# try:
-	# 	print(local_run())
-	# except Exception as e:
-	# 	print(e)
-	print(local_run())
+	try:
+		print(local_run())
+	except Exception as e:
+		print(e)
+	# print(local_run())
