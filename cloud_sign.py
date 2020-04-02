@@ -1,20 +1,22 @@
 # -*- coding: utf8 -*-
 import os
 import time
-import urllib3
+# import urllib3
 import asyncio
 import re
 import json
 import requests
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from bs4 import BeautifulSoup
+requests.packages.urllib3.disable_warnings()
+# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 # =================配置区start===================
 
 # 学习通账号密码
 user_info = {
-	'username': 'xxxxxx',
-	'password': 'xxxxxx',
+	'username': '13550903732',
+	'password': 'kingdom456',
 	'schoolid': ''  # 学号登录才需要填写
 }
 
@@ -119,24 +121,39 @@ class AutoSign(object):
 
 	def get_all_classid(self) -> list:
 		"""获取课程主页中所有课程的classid和courseid"""
-		re_rule = r'<li style="position:relative">[\s]*<input type="hidden" name="courseId" value="(.*)" />[\s].*<input type="hidden" name="classId" value="(.*)" />[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[s].*[\s]*[\s].*[\s].*[\s].*[\s].*[\s].*<a  href=\'.*\' target="_blank" title=".*">(.*)</a>'
-		r = self.session.get(
-			'http://mooc1-2.chaoxing.com/visit/interaction',
-			headers=self.headers)
-		res = re.findall(re_rule, r.text)
+		res = []
+		# re_rule = r'<li style="position:relative">[\s]*<input type="hidden" name="courseId" value="(.*)" />[\s].*<input type="hidden" name="classId" value="(.*)" />[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[s].*[\s]*[\s].*[\s].*[\s].*[\s].*[\s].*<a  href=\'.*\' target="_blank" title=".*">(.*)</a>'
+		r = self.session.get('http://mooc1-2.chaoxing.com/visit/interaction', headers=self.headers)
+		# res = re.findall(re_rule, r.text)
+		soup = BeautifulSoup(r.text, "lxml")
+		courseId_list = soup.find_all('input', attrs={'name': 'courseId'})
+		classId_list = soup.find_all('input', attrs={'name': 'classId'})
+		classname_list = soup.find_all('h3', class_="clearfix")
+		for i, v in enumerate(courseId_list):
+			res.append((v['value'], classId_list[i]['value'], classname_list[i].find_next('a')['title']))
+		print(res)
 		return res
 
 	async def get_activeid(self, classid, courseid, classname):
 		"""访问任务面板获取课程的活动id"""
-		# sign_re_rule = r'<div class="Mct" onclick="activeDetail\((.*),2,null\)">[\s].*[\s].*[\s].*[\s].*<dd class="green">.*</dd>'
-		# sign_type_re_rule = r'<a href="javascript:;" shape="rect">\[(.*)\]</a>'
 		re_rule = r'<div class="Mct" onclick="activeDetail\((.*),2,null\)">[\s].*[\s].*[\s].*[\s].*<dd class="green">.*</dd>[\s]+[\s]</a>[\s]+</dl>[\s]+<div class="Mct_center wid660 fl">[\s]+<a href="javascript:;" shape="rect">(.*)</a>'
 		r = self.session.get(
 			'https://mobilelearn.chaoxing.com/widget/pcpick/stu/index?courseId={}&jclassId={}'.format(
 				courseid, classid), headers=self.headers, verify=False)
 		res = re.findall(re_rule, r.text)
-		# sign_type = re.findall(sign_type_re_rule, r.text)
-		# print(sign_type)
+
+		# res = []
+
+		# soup = BeautifulSoup(r.text, "lxml")
+		# for s in soup.find_all("div", id="startList"):
+		# 	print(s.text)
+		# 	# s.findall()
+		# 	s = s.find_next("div").find_next("div")
+		#
+		# 	# print(s)
+		# 	activeid = re.findall('onclick="activeDetail\((.*),2,null\)"', )
+		# 	res.append(activeid)
+		print(res)
 		if res != []:  # 满足签到条件
 			return {
 				'classid': classid,
@@ -311,7 +328,8 @@ def local_run():
 	# 本地运行使用
 	if "activeid.txt" not in os.listdir("./"):
 		with open(activeid_path, 'w+') as f:
-			f.write("")
+			f.write("{}")
+
 	s = AutoSign(user_info['username'], user_info['password'])
 	result = s.sign_tasks_run()
 	if result:
@@ -323,4 +341,8 @@ def local_run():
 
 
 if __name__ == '__main__':
+	# try:
+	# 	print(local_run())
+	# except Exception as e:
+	# 	print(e)
 	print(local_run())
