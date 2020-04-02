@@ -5,6 +5,7 @@ import asyncio
 import re
 import json
 import requests
+from lxml import etree
 from bs4 import BeautifulSoup
 requests.packages.urllib3.disable_warnings()
 
@@ -143,11 +144,22 @@ class AutoSign(object):
 
 	async def get_activeid(self, classid, courseid, classname):
 		"""访问任务面板获取课程的活动id"""
-		re_rule = r'<div class="Mct" onclick="activeDetail\((.*),2,null\)">[\s].*[\s].*[\s].*[\s].*<dd class="green">.*</dd>[\s]+[\s]</a>[\s]+</dl>[\s]+<div class="Mct_center wid660 fl">[\s]+<a href="javascript:;" shape="rect">(.*)</a>'
+		# re_rule = r'<div class="Mct" onclick="activeDetail\((.*),2,null\)">[\s].*[\s].*[\s].*[\s].*<dd class="green">.*</dd>[\s]+[\s]</a>[\s]+</dl>[\s]+<div class="Mct_center wid660 fl">[\s]+<a href="javascript:;" shape="rect">(.*)</a>'
+		re_rule = r'([\d]+),2'
 		r = self.session.get(
 			'https://mobilelearn.chaoxing.com/widget/pcpick/stu/index?courseId={}&jclassId={}'.format(
 				courseid, classid), headers=self.headers, verify=False)
-		res = re.findall(re_rule, r.text)
+		# res = re.findall(re_rule, r.text)
+		res = []
+		h = etree.HTML(r.text)
+		activeid_list = h.xpath('//*[@id="startList"]/div/div/@onclick')
+		sign_type_list = h.xpath('//*[@id="startList"]/div/div/div/a/text()')
+		for activeid, sign_type in zip(activeid_list, sign_type_list):
+			activeid = re.findall(re_rule, activeid)
+			if not activeid:
+				continue
+			res.append((activeid[0], sign_type))
+
 		n = len(res)
 		if n == 0:
 			return None
@@ -251,7 +263,6 @@ class AutoSign(object):
 			'objectId': '5712278eff455f9bcd76a85cd95c5de3'
 		}
 		res = self.session.get('https://mobilelearn.chaoxing.com/pptSign/stuSignajax', params=params)
-		print(res.text)
 		s = {
 			'date': time.strftime("%m-%d %H:%M", time.localtime()),
 			'status': res.text
@@ -338,8 +349,8 @@ def local_run():
 
 
 if __name__ == '__main__':
-	try:
-		print(local_run())
-	except Exception as e:
-		print(e)
-	# print(local_run())
+	# try:
+	# 	print(local_run())
+	# except Exception as e:
+	# 	print(e)
+	print(local_run())
