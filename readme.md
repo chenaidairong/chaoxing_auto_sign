@@ -9,7 +9,7 @@
 ## 如何使用？
 1. 使用接口，自动24小时签到
     参考此文
-    ![配合腾讯云函数 24小时全自动签到](https://www.z2blog.com/index.php/default/459.html)
+    https://www.z2blog.com/index.php/default/459.html
 
 2. 自己有服务器
     稍加修改代码，挂在自己的服务器上定时执行
