@@ -77,8 +77,8 @@ class AutoSign(object):
 				return False
 
 			# 找到后设置cookies
-			for u in cookies:
-				self.session.cookies.set(u, cookies[u])
+			cookies_jar = requests.utils.cookiejar_from_dict(cookies)
+			self.session.cookies = cookies_jar
 
 			# 检测cookies是否有效
 			r = self.session.get('http://i.mooc.chaoxing.com/app/myapps.shtml', allow_redirects=False)
