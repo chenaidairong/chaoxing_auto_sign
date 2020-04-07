@@ -3,6 +3,8 @@
 第一次使用需安装依赖
 `pip install -r requirements.txt`
 依赖安装好以后，然后在安装了Python环境的情况下双击 `cloud_sign.py` 即可。
+如果安装依赖出现 `microsoft-visual-c-140-is-required` 错误
+可以参考这篇文章https://blog.danziw.com/d/5-microsoft-visual-c-140-is-required
 ### 接口使用
 如果顺利，此时接口已经打开。使用浏览器访问 `127.0.0.1:800/docs` 可以看到接口的使用文档。
 
