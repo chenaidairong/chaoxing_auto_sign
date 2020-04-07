@@ -1,3 +1,6 @@
+urllib3
 requests
 lxml
 BeautifulSoup4
+uvicorn
+fastapi
