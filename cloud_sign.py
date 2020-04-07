@@ -4,10 +4,12 @@ import time
 import asyncio
 import re
 import json
+import urllib3
+import uvicorn
 import requests
 from lxml import etree
 from bs4 import BeautifulSoup
-requests.packages.urllib3.disable_warnings()
+from fastapi import FastAPI
 
 # =================配置区start===================
 
@@ -348,9 +350,13 @@ def local_run():
 		return "暂无签到任务"
 
 
+app = FastAPI()
+
+
+@app.post("/sign/")
+def sign(username: str, password: str):
+    return [local_run(username, password)]
+
+
 if __name__ == '__main__':
-	# try:
-	# 	print(local_run())
-	# except Exception as e:
-	# 	print(e)
-	print(local_run())
+    uvicorn.run(app, host="0.0.0.0", port=800)
